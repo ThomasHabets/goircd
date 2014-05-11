@@ -7,8 +7,9 @@ goircd is very simple IRC server, written on Go.
 
 DESCRIPTION
 
+goircd is very simple IRC server, written on Go.
 It is heavily inspired by miniircd daemon written on Python.
-It is not aimed to replace full featured mass scalable IRC networks:
+It does not aim to replace full featured mass scalable IRC networks:
 
 * It can not connect to other servers. Just standalone installation
 * It has few basic IRC commands
