@@ -1,0 +1,12 @@
+goircd requires only standard Go's libraries and consists of single main
+package. You can install it using either:
+
+	% go get github.com/stargrave/goircd
+	% go install github.com/stargrave/goircd
+
+or if you are already inside goircd directory:
+
+	% go install
+
+You should found goircd executable binary in your $GOPATH/bin/goircd.
+Just run it with -help argument to see available options.

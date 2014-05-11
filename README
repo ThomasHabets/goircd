@@ -1,0 +1,68 @@
+     goircd -- minimalistic simple Internet Relay Chat (IRC) server
+     ==============================================================
+
+SYNOPSIS
+
+goircd is very simple IRC server, written on Go.
+
+DESCRIPTION
+
+It is heavily inspired by miniircd daemon written on Python.
+It is not aimed to replace full featured mass scalable IRC networks:
+
+* It can not connect to other servers. Just standalone installation
+* It has few basic IRC commands
+* There is not support for channel operators, modes, votes, invites
+  and so on
+* No ident lookups, reverse DNS queries
+
+But it has some convincing features:
+
+* Only standard Go libraries, no external requirements
+* Single executable binary
+* No configuration file, just few command line arguments
+* IPv6 out-of-box support
+* Optional channel logging to plain text files
+* Optional permanent channel's state saving in plain text files
+  (so you can reload daemon and all channels topics and keys won't
+  disappear)
+
+Some remarks and recommendations related to it's simplicity:
+
+* Use either nohup or similar tools to daemonize it
+* Use either crywrap or similar tools for TLS-capable connections
+* Just plain logging on stderr, without syslog support
+
+SUPPORTED IRC COMMANDS
+
+* NICK/USER during registration workflow
+* PING/PONGs
+* NOTICE/PRIVMSG
+* MOTD, LUSERS, WHO, WHOIS, QUIT
+* LIST, JOIN, TOPIC, +k/-k channel MODE
+
+USAGE
+
+Just execute goircd daemon. It has following optional arguments:
+
+* -hostname: hostname to show for client's connections
+* -bind: address to bind to (:6667 be default)
+* -motd: absolute path to MOTD file. It is reread every time MOTD is
+         requested
+* -logdir: directory where all channels messages will be saved. If
+           omitted, then no logs will be kept
+* -statedir: directory where all channels states will be saved and
+             loaded during startup. If omitted, then states will be
+             lost after daemon termination
+
+LICENCE
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
