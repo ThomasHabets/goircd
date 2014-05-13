@@ -116,7 +116,7 @@ func (daemon *Daemon) SendWhois(client *Client, nicknames []string) {
 			client.ReplyNicknamed("318", c.nickname, "End of WHOIS list")
 		}
 		if !found {
-			client.ReplyNicknamed("401", nickname, "No such nickname")
+			client.ReplyNoNickChan(nickname)
 		}
 	}
 }
@@ -385,7 +385,7 @@ func (daemon *Daemon) Processor(events chan ClientEvent) {
 				target, _ = RoomNameSanitize(target)
 				r, found := daemon.rooms[target]
 				if !found {
-					client.ReplyNicknamed("401", target, "No such nickname/channel")
+					client.ReplyNoNickChan(target)
 				}
 				daemon.room_sinks[r] <- ClientEvent{client, EVENT_MSG, command + " " + strings.TrimLeft(cols[1], ":")}
 			case "TOPIC":

@@ -117,3 +117,7 @@ func (client *Client) ReplyNotEnoughParameters(command string) {
 func (client *Client) ReplyNoChannel(channel string) {
 	client.ReplyNicknamed("403", channel, "No such channel")
 }
+
+func (client *Client) ReplyNoNickChan(channel string) {
+	client.ReplyNicknamed("401", channel, "No such nick/channel")
+}
