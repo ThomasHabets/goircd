@@ -121,7 +121,7 @@ func (room *Room) Processor(events chan ClientEvent) {
 			for m := range room.members {
 				client.ReplyNicknamed("352", room.name, m.username, m.conn.RemoteAddr().String(), room.hostname, m.nickname, "H", "0 "+m.realname)
 			}
-			client.ReplyNicknamed("315", room.name, "End of WHO list")
+			client.ReplyNicknamed("315", room.name, "End of /WHO list")
 		case EVENT_MODE:
 			if event.text == "" {
 				mode := "+"

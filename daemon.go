@@ -63,7 +63,7 @@ func (daemon *Daemon) SendLusers(client *Client) {
 			lusers++
 		}
 	}
-	client.ReplyNicknamed("251", fmt.Sprintf("There are %d users and 0 services on 1 server", lusers))
+	client.ReplyNicknamed("251", fmt.Sprintf("There are %d users and 0 invisible on 1 servers", lusers))
 }
 
 func (daemon *Daemon) SendMotd(client *Client) {
@@ -113,7 +113,7 @@ func (daemon *Daemon) SendWhois(client *Client, nicknames []string) {
 			}
 			sort.Strings(subscriptions)
 			client.ReplyNicknamed("319", c.nickname, strings.Join(subscriptions, " "))
-			client.ReplyNicknamed("318", c.nickname, "End of WHOIS list")
+			client.ReplyNicknamed("318", c.nickname, "End of /WHOIS list")
 		}
 		if !found {
 			client.ReplyNoNickChan(nickname)
@@ -138,7 +138,7 @@ func (daemon *Daemon) SendList(client *Client, cols []string) {
 			client.ReplyNicknamed("322", room, fmt.Sprintf("%d", len(r.members)), r.topic)
 		}
 	}
-	client.ReplyNicknamed("323", "End of LIST")
+	client.ReplyNicknamed("323", "End of /LIST")
 }
 
 // Unregistered client workflow processor. Unregistered client:
@@ -362,7 +362,7 @@ func (daemon *Daemon) Processor(events chan ClientEvent) {
 				continue
 			case "NOTICE", "PRIVMSG":
 				if len(cols) == 1 {
-					client.ReplyNicknamed("411", "No recipient given")
+					client.ReplyNicknamed("411", "No recipient given ("+command+")")
 					continue
 				}
 				cols = strings.SplitN(cols[1], " ", 2)
