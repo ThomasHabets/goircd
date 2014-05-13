@@ -35,6 +35,10 @@ const (
 	ALIVENESS_CHECK = time.Second * 10  // Client's aliveness check period
 )
 
+var (
+	RE_NICKNAME = regexp.MustCompile("^[a-zA-Z0-9-]{1,9}$")
+)
+
 type Daemon struct {
 	hostname             string
 	motd                 string
@@ -153,19 +157,16 @@ func (daemon *Daemon) ClientRegister(client *Client, command string, cols []stri
 			client.ReplyParts("431", "No nickname given")
 			return
 		}
-		nickname := strings.ToLower(cols[1])
-		nickname_found := false
+		nickname := cols[1]
 		for client := range daemon.clients {
 			if client.nickname == nickname {
-				nickname_found = true
+				client.ReplyParts("433", "*", nickname, "Nickname is already in use")
+				return
 			}
 		}
-		if nickname_found {
-			client.ReplyParts("433", "*", cols[1], "Nickname is already in use")
-			return
-		}
-		if ok, _ := regexp.MatchString("^[^_-][_a-z0-9-]{1,50}$", nickname); !ok {
+		if !RE_NICKNAME.MatchString(nickname) {
 			client.ReplyParts("432", "*", cols[1], "Erroneous nickname")
+			return
 		}
 		client.nickname = nickname
 	case "USER":
@@ -213,8 +214,7 @@ func (daemon *Daemon) HandlerJoin(client *Client, cmd string) {
 		keys = []string{}
 	}
 	for n, room := range rooms {
-		room, valid := RoomNameSanitize(room)
-		if !valid {
+		if !RoomNameValid(room) {
 			client.ReplyNoChannel(room)
 			continue
 		}
@@ -326,7 +326,7 @@ func (daemon *Daemon) Processor(events chan ClientEvent) {
 					}
 					continue
 				}
-				room, _ := RoomNameSanitize(cols[0])
+				room := cols[0]
 				r, found := daemon.rooms[room]
 				if !found {
 					client.ReplyNoChannel(room)
@@ -345,7 +345,6 @@ func (daemon *Daemon) Processor(events chan ClientEvent) {
 					continue
 				}
 				for _, room := range strings.Split(cols[1], ",") {
-					room, _ = RoomNameSanitize(room)
 					r, found := daemon.rooms[room]
 					if !found {
 						client.ReplyNoChannel(room)
@@ -382,7 +381,6 @@ func (daemon *Daemon) Processor(events chan ClientEvent) {
 				if msg != "" {
 					continue
 				}
-				target, _ = RoomNameSanitize(target)
 				r, found := daemon.rooms[target]
 				if !found {
 					client.ReplyNoNickChan(target)
@@ -394,10 +392,9 @@ func (daemon *Daemon) Processor(events chan ClientEvent) {
 					continue
 				}
 				cols = strings.SplitN(cols[1], " ", 2)
-				room, _ := RoomNameSanitize(cols[0])
-				r, found := daemon.rooms[room]
+				r, found := daemon.rooms[cols[0]]
 				if !found {
-					client.ReplyNoChannel(room)
+					client.ReplyNoChannel(cols[0])
 				}
 				var change string
 				if len(cols) > 1 {
@@ -411,7 +408,7 @@ func (daemon *Daemon) Processor(events chan ClientEvent) {
 					client.ReplyNotEnoughParameters("WHO")
 					continue
 				}
-				room, _ := RoomNameSanitize(strings.Split(cols[1], " ")[0])
+				room := strings.Split(cols[1], " ")[0]
 				r, found := daemon.rooms[room]
 				if !found {
 					client.ReplyNoChannel(room)

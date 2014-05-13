@@ -25,12 +25,14 @@ import (
 	"strings"
 )
 
+var (
+	RE_ROOM = regexp.MustCompile("^#[^\x00\x07\x0a\x0d ,:/]{1,200}$")
+)
+
 // Sanitize room's name. It can consist of 1 to 50 ASCII symbols
 // with some exclusions. All room names will have "#" prefix.
-func RoomNameSanitize(name string) (n string, valid bool) {
-	n = strings.TrimLeft(strings.ToLower(name), "&#+!")
-	valid, _ = regexp.MatchString("^[^\x00\x07\x0a\x0d ,:/]{1,50}$", n)
-	return "#" + n, valid
+func RoomNameValid(name string) bool {
+	return RE_ROOM.MatchString(name)
 }
 
 type Room struct {
