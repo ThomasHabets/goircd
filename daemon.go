@@ -84,7 +84,7 @@ func (daemon *Daemon) SendMotd(client *Client) {
 			}
 
 			client.ReplyNicknamed("375", "- "+daemon.hostname+" Message of the day -")
-			for _, s := range bytes.Split(motd, []byte("\n")) {
+			for _, s := range bytes.Split(bytes.TrimRight(motd, "\n"), []byte("\n")) {
 				client.ReplyNicknamed("372", "- "+string(s))
 			}
 			client.ReplyNicknamed("376", "End of /MOTD command")
