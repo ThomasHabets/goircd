@@ -18,12 +18,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
-	"time"
 )
 
 func TestRegistrationWorkflow(t *testing.T) {
@@ -32,87 +30,71 @@ func TestRegistrationWorkflow(t *testing.T) {
 	go daemon.Processor(events)
 	conn := NewTestingConn()
 	client := NewClient("foohost", conn)
+	go client.Processor(events)
 
-	events <- ClientEvent{client, EVENT_NEW, ""}
-	events <- ClientEvent{client, EVENT_MSG, "UNEXISTENT CMD"}
-	time.Sleep(100)
-	if len(conn.incoming) > 0 {
-		t.Fail()
+	conn.inbound <- "UNEXISTENT CMD" // should recieve nothing on this
+	conn.inbound <- "NICK"
+
+	if r := <-conn.outbound; r != ":foohost 431 :No nickname given\r\n" {
+		t.Fatal("431 for NICK")
 	}
 
-	events <- ClientEvent{client, EVENT_MSG, "NICK"}
-	time.Sleep(100)
-	if (len(conn.incoming) != 1) || (conn.incoming[0] != ":foohost 431 :No nickname given\r\n") {
-		t.Fail()
+	conn.inbound <- "NICK meinick\r\nUSER\r\n"
+	if r := <-conn.outbound; r != ":foohost 461 meinick USER :Not enough parameters\r\n" {
+		t.Fatal("461 for USER", r)
+	}
+	if (client.nickname != "meinick") || client.registered {
+		t.Fatal("NICK saved")
 	}
 
-	events <- ClientEvent{client, EVENT_MSG, "NICK meinick"}
-	time.Sleep(100)
-	if (len(conn.incoming) != 1) || (client.nickname != "meinick") || client.registered {
-		t.Fail()
-	}
-
-	events <- ClientEvent{client, EVENT_MSG, "USER"}
-	time.Sleep(100)
-	if (len(conn.incoming) != 2) || (conn.incoming[1] != ":foohost 461 meinick USER :Not enough parameters\r\n") {
-		t.Fail()
-	}
-
-	events <- ClientEvent{client, EVENT_MSG, "USER 1 2 3"}
-	time.Sleep(100)
-	if (len(conn.incoming) != 3) || (conn.incoming[2] != ":foohost 461 meinick USER :Not enough parameters\r\n") {
-		t.Fail()
+	conn.inbound <- "USER 1 2 3\r\n"
+	if r := <-conn.outbound; r != ":foohost 461 meinick USER :Not enough parameters\r\n" {
+		t.Fatal("461 again for USER")
 	}
 
 	daemon.SendLusers(client)
-	if !strings.Contains(conn.incoming[len(conn.incoming)-1], "There are 0 users") {
-		t.Fail()
+	if r := <-conn.outbound; !strings.Contains(r, "There are 0 users") {
+		t.Fatal("LUSERS")
 	}
 
-	events <- ClientEvent{client, EVENT_MSG, "USER 1 2 3 :4 5"}
-	time.Sleep(100)
-	if (len(conn.incoming) < 4) || (client.username != "1") || (client.realname != "4 5") {
-		t.Fail()
+	conn.inbound <- "USER 1 2 3 :4 5\r\n"
+	if r := <-conn.outbound; !strings.Contains(r, ":foohost 001") {
+		t.Fatal("001 after registration")
+	}
+	if r := <-conn.outbound; !strings.Contains(r, ":foohost 002") {
+		t.Fatal("002 after registration")
+	}
+	if r := <-conn.outbound; !strings.Contains(r, ":foohost 003") {
+		t.Fatal("003 after registration")
+	}
+	if r := <-conn.outbound; !strings.Contains(r, ":foohost 004") {
+		t.Fatal("004 after registration")
+	}
+	if r := <-conn.outbound; !strings.Contains(r, ":foohost 251") {
+		t.Fatal("251 after registration")
+	}
+	if r := <-conn.outbound; !strings.Contains(r, ":foohost 422") {
+		t.Fatal("422 after registration")
+	}
+	if (client.username != "1") || (client.realname != "4 5") || !client.registered {
+		t.Fatal("client register")
 	}
 
-	statuses := map[int]bool{1: false, 2: false, 3: false, 4: false, 251: false, 422: false}
-	for _, msg := range conn.incoming {
-		for k, _ := range statuses {
-			if strings.HasPrefix(msg, fmt.Sprintf(":foohost %03d", k)) {
-				statuses[k] = true
-			}
-		}
-	}
-	for _, v := range statuses {
-		if !v {
-			t.Fail()
-		}
-	}
-	if !client.registered {
-		t.Fail()
-	}
-
-	events <- ClientEvent{client, EVENT_MSG, "UNEXISTENT CMD"}
-	time.Sleep(100)
-	if conn.incoming[len(conn.incoming)-1] != ":foohost 421 meinick UNEXISTENT :Unknown command\r\n" {
-		t.Fail()
-	}
-
-	events <- ClientEvent{client, EVENT_MSG, "AWAY"}
-	time.Sleep(100)
-	if conn.incoming[len(conn.incoming)-1] == ":foohost 421 meinick AWAY :Unknown command\r\n" {
-		t.Fail()
+	conn.inbound <- "AWAY\r\n"
+	conn.inbound <- "UNEXISTENT CMD\r\n"
+	if r := <-conn.outbound; r != ":foohost 421 meinick UNEXISTENT :Unknown command\r\n" {
+		t.Fatal("reply for unexistent command")
 	}
 
 	daemon.SendLusers(client)
-	if !strings.Contains(conn.incoming[len(conn.incoming)-1], "There are 1 users") {
-		t.Fail()
+	if r := <-conn.outbound; !strings.Contains(r, "There are 1 users") {
+		t.Fatal("1 users logged in")
 	}
 
-	events <- ClientEvent{client, EVENT_MSG, "QUIT"}
-	time.Sleep(100)
+	conn.inbound <- "QUIT\r\nUNEXISTENT CMD\r\n"
+	<-conn.outbound
 	if !conn.closed {
-		t.Fail()
+		t.Fatal("closed connection on QUIT")
 	}
 }
 
@@ -123,18 +105,19 @@ func TestMotd(t *testing.T) {
 	}
 	defer os.Remove(fd.Name())
 	fd.Write([]byte("catched\n"))
-	daemon := NewDaemon("foohost", fd.Name(), nil, nil)
+
 	conn := NewTestingConn()
 	client := NewClient("foohost", conn)
+	daemon := NewDaemon("foohost", fd.Name(), nil, nil)
 
 	daemon.SendMotd(client)
-	catched := false
-	for _, msg := range conn.incoming {
-		if strings.Contains(msg, "372 * :- catched") {
-			catched = true
-		}
+	if r := <-conn.outbound; !strings.HasPrefix(r, ":foohost 375") {
+		t.Fatal("MOTD start")
 	}
-	if !catched {
-		t.Fail()
+	if r := <-conn.outbound; !strings.Contains(r, "372 * :- catched\r\n") {
+		t.Fatal("MOTD contents")
+	}
+	if r := <-conn.outbound; !strings.HasPrefix(r, ":foohost 376") {
+		t.Fatal("MOTD end", r)
 	}
 }

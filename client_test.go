@@ -26,33 +26,30 @@ import (
 // Testing network connection that satisfies net.Conn interface
 // Can send predefined messages and store all written ones
 type TestingConn struct {
-	msgs     []string
-	msg_ptr  int
-	incoming []string
+	inbound  chan string
+	outbound chan string
 	closed   bool
 }
 
-func NewTestingConn(msgs ...string) *TestingConn {
-	msgs_crlf := []string{}
-	for _, msg := range msgs {
-		msgs_crlf = append(msgs_crlf, msg+"\r\n")
-	}
-	return &TestingConn{msgs: msgs_crlf, msg_ptr: -1}
+func NewTestingConn() *TestingConn {
+	inbound := make(chan string, 8)
+	outbound := make(chan string, 8)
+	return &TestingConn{inbound: inbound, outbound: outbound}
 }
 
 func (conn TestingConn) Error() string {
-	return "i am out"
+	return "i am finished"
 }
 
 func (conn *TestingConn) Read(b []byte) (n int, err error) {
-	conn.msg_ptr++
-	if len(conn.msgs) == conn.msg_ptr {
-		return 0, TestingConn{}
+	msg := <-conn.inbound
+	if msg == "" {
+		return 0, conn
 	}
-	for n, bt := range []byte(conn.msgs[conn.msg_ptr]) {
+	for n, bt := range []byte(msg + CRLF) {
 		b[n] = bt
 	}
-	return len(conn.msgs[conn.msg_ptr]), nil
+	return len(msg), nil
 }
 
 type MyAddr struct{}
@@ -65,12 +62,13 @@ func (a MyAddr) Network() string {
 }
 
 func (conn *TestingConn) Write(b []byte) (n int, err error) {
-	conn.incoming = append(conn.incoming, string(b))
-	return 0, nil
+	conn.outbound <- string(b)
+	return len(b), nil
 }
 
 func (conn *TestingConn) Close() error {
 	conn.closed = true
+	//conn.incoming <- ""
 	return nil
 }
 
@@ -97,52 +95,55 @@ func (conn TestingConn) SetWriteDeadline(t time.Time) error {
 // New client creation test. It must send an event about new client,
 // two predefined messages from it and deletion one
 func TestNewClient(t *testing.T) {
-	conn := NewTestingConn("foo", "bar")
+	conn := NewTestingConn()
 	sink := make(chan ClientEvent)
 	client := NewClient("foohost", conn)
 	go client.Processor(sink)
 
 	event := <-sink
 	if event.event_type != EVENT_NEW {
-		t.Fail()
+		t.Fatal("no NEW event")
 	}
+	conn.inbound <- "foo"
 	event = <-sink
 	if (event.event_type != EVENT_MSG) || (event.text != "foo") {
-		t.Fail()
+		t.Fatal("no first MSG")
 	}
+	conn.inbound <- "bar"
 	event = <-sink
 	if (event.event_type != EVENT_MSG) || (event.text != "bar") {
-		t.Fail()
+		t.Fatal("no second MSG")
 	}
+	conn.inbound <- ""
 	event = <-sink
 	if event.event_type != EVENT_DEL {
-		t.Fail()
+		t.Fatal("no client termination")
 	}
 }
 
 // Test replies formatting
 func TestClientReplies(t *testing.T) {
-	conn := NewTestingConn("foo", "bar")
+	conn := NewTestingConn()
 	client := NewClient("foohost", conn)
 	client.nickname = "мойник"
 
 	client.Reply("hello")
-	if (len(conn.incoming) != 1) || (conn.incoming[0] != ":foohost hello\r\n") {
+	if r := <-conn.outbound; r != ":foohost hello\r\n" {
 		t.Fatal("did not recieve hello message")
 	}
 
 	client.ReplyParts("200", "foo", "bar")
-	if (len(conn.incoming) != 2) || (conn.incoming[1] != ":foohost 200 foo :bar\r\n") {
+	if r := <-conn.outbound; r != ":foohost 200 foo :bar\r\n" {
 		t.Fatal("did not recieve 200 message")
 	}
 
 	client.ReplyNicknamed("200", "foo", "bar")
-	if (len(conn.incoming) != 3) || (conn.incoming[2] != ":foohost 200 мойник foo :bar\r\n") {
+	if r := <-conn.outbound; r != ":foohost 200 мойник foo :bar\r\n" {
 		t.Fatal("did not recieve nicknamed message")
 	}
 
 	client.ReplyNotEnoughParameters("CMD")
-	if (len(conn.incoming) != 4) || (conn.incoming[3] != ":foohost 461 мойник CMD :Not enough parameters\r\n") {
+	if r := <-conn.outbound; r != ":foohost 461 мойник CMD :Not enough parameters\r\n" {
 		t.Fatal("did not recieve 461 message")
 	}
 }
