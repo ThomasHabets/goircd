@@ -13,7 +13,7 @@ It does not aim to replace full featured mass scalable IRC networks:
 
 * It can not connect to other servers. Just standalone installation
 * It has few basic IRC commands
-* There is not support for channel operators, modes, votes, invites
+* There is no support for channel operators, modes, votes, invites
   and so on
 * No ident lookups, reverse DNS queries
 
