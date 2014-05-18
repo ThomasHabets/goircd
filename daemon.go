@@ -247,6 +247,7 @@ func (daemon *Daemon) HandlerJoin(client *Client, cmd string) {
 		room_new, room_sink := daemon.RoomRegister(room)
 		if key != "" {
 			room_new.key = key
+			room_new.StateSave()
 		}
 		room_sink <- ClientEvent{client, EVENT_NEW, ""}
 	}
