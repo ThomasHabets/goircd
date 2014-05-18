@@ -239,7 +239,6 @@ func (daemon *Daemon) HandlerJoin(client *Client, cmd string) {
 		}
 		if denied {
 			client.ReplyNicknamed("475", room, "Cannot join channel (+k) - bad key")
-			continue
 		}
 		if denied || joined {
 			continue
@@ -349,6 +348,7 @@ func (daemon *Daemon) Processor(events chan ClientEvent) {
 					r, found := daemon.rooms[room]
 					if !found {
 						client.ReplyNoChannel(room)
+						continue
 					}
 					daemon.room_sinks[r] <- ClientEvent{client, EVENT_DEL, ""}
 				}
@@ -396,6 +396,7 @@ func (daemon *Daemon) Processor(events chan ClientEvent) {
 				r, found := daemon.rooms[cols[0]]
 				if !found {
 					client.ReplyNoChannel(cols[0])
+					continue
 				}
 				var change string
 				if len(cols) > 1 {
@@ -413,6 +414,7 @@ func (daemon *Daemon) Processor(events chan ClientEvent) {
 				r, found := daemon.rooms[room]
 				if !found {
 					client.ReplyNoChannel(room)
+					continue
 				}
 				daemon.room_sinks[r] <- ClientEvent{client, EVENT_WHO, ""}
 			case "WHOIS":
