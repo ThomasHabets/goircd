@@ -36,10 +36,17 @@ func TestRegistrationWorkflow(t *testing.T) {
 	conn.inbound <- "NICK"
 
 	if r := <-conn.outbound; r != ":foohost 431 :No nickname given\r\n" {
-		t.Fatal("431 for NICK")
+		t.Fatal("431 for NICK", r)
 	}
 
-	conn.inbound <- "NICK meinick\r\nUSER\r\n"
+	for _, n := range []string{"привет", " foo", "longlonglong", "#foo", "mein nick", "foo_bar"} {
+		conn.inbound <- "NICK " + n
+		if r := <-conn.outbound; r != ":foohost 432 * "+n+" :Erroneous nickname\r\n" {
+			t.Fatal("nickname validation", r)
+		}
+	}
+
+	conn.inbound <- "NICK meinick\r\nUSER"
 	if r := <-conn.outbound; r != ":foohost 461 meinick USER :Not enough parameters\r\n" {
 		t.Fatal("461 for USER", r)
 	}
@@ -47,51 +54,56 @@ func TestRegistrationWorkflow(t *testing.T) {
 		t.Fatal("NICK saved")
 	}
 
-	conn.inbound <- "USER 1 2 3\r\n"
+	conn.inbound <- "USER 1 2 3"
 	if r := <-conn.outbound; r != ":foohost 461 meinick USER :Not enough parameters\r\n" {
-		t.Fatal("461 again for USER")
+		t.Fatal("461 again for USER", r)
 	}
 
 	daemon.SendLusers(client)
 	if r := <-conn.outbound; !strings.Contains(r, "There are 0 users") {
-		t.Fatal("LUSERS")
+		t.Fatal("LUSERS", r)
 	}
 
-	conn.inbound <- "USER 1 2 3 :4 5\r\n"
+	conn.inbound <- "USER 1 2 3 :4 5"
 	if r := <-conn.outbound; !strings.Contains(r, ":foohost 001") {
-		t.Fatal("001 after registration")
+		t.Fatal("001 after registration", r)
 	}
 	if r := <-conn.outbound; !strings.Contains(r, ":foohost 002") {
-		t.Fatal("002 after registration")
+		t.Fatal("002 after registration", r)
 	}
 	if r := <-conn.outbound; !strings.Contains(r, ":foohost 003") {
-		t.Fatal("003 after registration")
+		t.Fatal("003 after registration", r)
 	}
 	if r := <-conn.outbound; !strings.Contains(r, ":foohost 004") {
-		t.Fatal("004 after registration")
+		t.Fatal("004 after registration", r)
 	}
 	if r := <-conn.outbound; !strings.Contains(r, ":foohost 251") {
-		t.Fatal("251 after registration")
+		t.Fatal("251 after registration", r)
 	}
 	if r := <-conn.outbound; !strings.Contains(r, ":foohost 422") {
-		t.Fatal("422 after registration")
+		t.Fatal("422 after registration", r)
 	}
 	if (client.username != "1") || (client.realname != "4 5") || !client.registered {
 		t.Fatal("client register")
 	}
 
-	conn.inbound <- "AWAY\r\n"
-	conn.inbound <- "UNEXISTENT CMD\r\n"
+	conn.inbound <- "AWAY"
+	conn.inbound <- "UNEXISTENT CMD"
 	if r := <-conn.outbound; r != ":foohost 421 meinick UNEXISTENT :Unknown command\r\n" {
-		t.Fatal("reply for unexistent command")
+		t.Fatal("reply for unexistent command", r)
 	}
 
 	daemon.SendLusers(client)
 	if r := <-conn.outbound; !strings.Contains(r, "There are 1 users") {
-		t.Fatal("1 users logged in")
+		t.Fatal("1 users logged in", r)
 	}
 
-	conn.inbound <- "QUIT\r\nUNEXISTENT CMD\r\n"
+	conn.inbound <- "PING thishost"
+	if r := <-conn.outbound; r != ":foohost PONG foohost :thishost\r\n" {
+		t.Fatal("PONG", r)
+	}
+
+	conn.inbound <- "QUIT\r\nUNEXISTENT CMD"
 	<-conn.outbound
 	if !conn.closed {
 		t.Fatal("closed connection on QUIT")
@@ -112,10 +124,10 @@ func TestMotd(t *testing.T) {
 
 	daemon.SendMotd(client)
 	if r := <-conn.outbound; !strings.HasPrefix(r, ":foohost 375") {
-		t.Fatal("MOTD start")
+		t.Fatal("MOTD start", r)
 	}
 	if r := <-conn.outbound; !strings.Contains(r, "372 * :- catched\r\n") {
-		t.Fatal("MOTD contents")
+		t.Fatal("MOTD contents", r)
 	}
 	if r := <-conn.outbound; !strings.HasPrefix(r, ":foohost 376") {
 		t.Fatal("MOTD end", r)

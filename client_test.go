@@ -68,7 +68,6 @@ func (conn *TestingConn) Write(b []byte) (n int, err error) {
 
 func (conn *TestingConn) Close() error {
 	conn.closed = true
-	//conn.incoming <- ""
 	return nil
 }
 
@@ -102,22 +101,26 @@ func TestNewClient(t *testing.T) {
 
 	event := <-sink
 	if event.event_type != EVENT_NEW {
-		t.Fatal("no NEW event")
+		t.Fatal("no NEW event", event)
 	}
 	conn.inbound <- "foo"
 	event = <-sink
+	ts1 := client.timestamp
 	if (event.event_type != EVENT_MSG) || (event.text != "foo") {
-		t.Fatal("no first MSG")
+		t.Fatal("no first MSG", event)
 	}
 	conn.inbound <- "bar"
 	event = <-sink
 	if (event.event_type != EVENT_MSG) || (event.text != "bar") {
-		t.Fatal("no second MSG")
+		t.Fatal("no second MSG", event)
 	}
 	conn.inbound <- ""
+	if client.timestamp.Before(ts1) || client.timestamp.Equal(ts1) {
+		t.Fatal("timestamp updating")
+	}
 	event = <-sink
 	if event.event_type != EVENT_DEL {
-		t.Fatal("no client termination")
+		t.Fatal("no client termination", event)
 	}
 }
 
@@ -129,21 +132,21 @@ func TestClientReplies(t *testing.T) {
 
 	client.Reply("hello")
 	if r := <-conn.outbound; r != ":foohost hello\r\n" {
-		t.Fatal("did not recieve hello message")
+		t.Fatal("did not recieve hello message", r)
 	}
 
 	client.ReplyParts("200", "foo", "bar")
 	if r := <-conn.outbound; r != ":foohost 200 foo :bar\r\n" {
-		t.Fatal("did not recieve 200 message")
+		t.Fatal("did not recieve 200 message", r)
 	}
 
 	client.ReplyNicknamed("200", "foo", "bar")
 	if r := <-conn.outbound; r != ":foohost 200 мойник foo :bar\r\n" {
-		t.Fatal("did not recieve nicknamed message")
+		t.Fatal("did not recieve nicknamed message", r)
 	}
 
 	client.ReplyNotEnoughParameters("CMD")
 	if r := <-conn.outbound; r != ":foohost 461 мойник CMD :Not enough parameters\r\n" {
-		t.Fatal("did not recieve 461 message")
+		t.Fatal("did not recieve 461 message", r)
 	}
 }
