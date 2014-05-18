@@ -87,7 +87,7 @@ func (room *Room) Processor(events chan ClientEvent) {
 			room.members[client] = true
 			log.Println(client, "joined", room.name)
 			room.SendTopic(client)
-			go room.Broadcast(fmt.Sprintf(":%s JOIN %s", client, room.name))
+			room.Broadcast(fmt.Sprintf(":%s JOIN %s", client, room.name))
 			room.log_sink <- LogEvent{room.name, client.nickname, "joined", true}
 			nicknames := []string{}
 			for member := range room.members {
@@ -163,7 +163,7 @@ func (room *Room) Processor(events chan ClientEvent) {
 			room.StateSave()
 		case EVENT_MSG:
 			sep := strings.Index(event.text, " ")
-			go room.Broadcast(fmt.Sprintf(":%s %s %s :%s", client, event.text[:sep], room.name, event.text[sep+1:]), client)
+			room.Broadcast(fmt.Sprintf(":%s %s %s :%s", client, event.text[:sep], room.name, event.text[sep+1:]), client)
 			room.log_sink <- LogEvent{room.name, client.nickname, event.text[sep+1:], false}
 		}
 	}
