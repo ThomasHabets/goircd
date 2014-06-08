@@ -113,10 +113,10 @@ func TestRegistrationWorkflow(t *testing.T) {
 func TestMotd(t *testing.T) {
 	fd, err := ioutil.TempFile("", "motd")
 	if err != nil {
-		t.Fatal("can not create temporary file")
+		t.Fatalf("can not create temporary file: %v", err)
 	}
 	defer os.Remove(fd.Name())
-	fd.Write([]byte("catched\n"))
+	fd.WriteString("catched\n")
 
 	conn := NewTestingConn()
 	client := NewClient("foohost", conn)
@@ -129,7 +129,7 @@ func TestMotd(t *testing.T) {
 	if r := <-conn.outbound; !strings.Contains(r, "372 * :- catched\r\n") {
 		t.Fatal("MOTD contents", r)
 	}
-	if r := <-conn.outbound; !strings.HasPrefix(r, ":foohost 376") {
-		t.Fatal("MOTD end", r)
+	if got, want := <-conn.outbound, ":foohost 376"; !strings.HasPrefix(got, want) {
+		t.Fatalf("MOTD end: got %q, want prefix %q", got, want)
 	}
 }

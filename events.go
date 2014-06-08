@@ -19,6 +19,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"path"
@@ -94,16 +95,12 @@ type StateEvent struct {
 // Room states shows that either topic or key has been changed
 // Each room's state is written to separate file in statedir
 func StateKeeper(statedir string, events <-chan StateEvent) {
-	mode := os.O_CREATE | os.O_TRUNC | os.O_WRONLY
-	perm := os.FileMode(0660)
 	for event := range events {
-		state_path := path.Join(statedir, event.where)
-		fd, err := os.OpenFile(state_path, mode, perm)
+		fn := path.Join(statedir, event.where)
+		data := event.topic + "\n" + event.key + "\n"
+		err := ioutil.WriteFile(fn, []byte(data), os.FileMode(0660))
 		if err != nil {
-			log.Println("Can not open statefile", state_path, err)
-			continue
+			log.Printf("Can not write statefile %s: %v", fn, err)
 		}
-		fd.WriteString(event.topic + "\n" + event.key + "\n")
-		fd.Close()
 	}
 }

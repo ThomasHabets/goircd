@@ -18,11 +18,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
-	"bytes"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"log"
-	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -72,29 +70,23 @@ func (daemon *Daemon) SendLusers(client *Client) {
 }
 
 func (daemon *Daemon) SendMotd(client *Client) {
-	if daemon.motd != "" {
-		fd, err := os.Open(daemon.motd)
-		if err == nil {
-			defer fd.Close()
-			motd := []byte{}
-			var err error
-			for err != io.EOF {
-				buf := make([]byte, 1024)
-				_, err = fd.Read(buf)
-				motd = append(motd, bytes.TrimRight(buf, "\x00")...)
-			}
-
-			client.ReplyNicknamed("375", "- "+daemon.hostname+" Message of the day -")
-			for _, s := range bytes.Split(bytes.TrimRight(motd, "\n"), []byte("\n")) {
-				client.ReplyNicknamed("372", "- "+string(s))
-			}
-			client.ReplyNicknamed("376", "End of /MOTD command")
-			return
-		} else {
-			log.Println("Can not open motd file", daemon.motd, err)
-		}
+	if len(daemon.motd) == 0 {
+		client.ReplyNicknamed("422", "MOTD File is missing")
+		return
 	}
-	client.ReplyNicknamed("422", "MOTD File is missing")
+
+	motd, err := ioutil.ReadFile(daemon.motd)
+	if err != nil {
+		log.Printf("Can not read motd file %s: %v", daemon.motd, err)
+		client.ReplyNicknamed("422", "Error reading MOTD File")
+		return
+	}
+
+	client.ReplyNicknamed("375", "- "+daemon.hostname+" Message of the day -")
+	for _, s := range strings.Split(strings.Trim(string(motd), "\n"), "\n") {
+		client.ReplyNicknamed("372", "- "+string(s))
+	}
+	client.ReplyNicknamed("376", "End of /MOTD command")
 }
 
 func (daemon *Daemon) SendWhois(client *Client, nicknames []string) {

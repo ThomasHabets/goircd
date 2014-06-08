@@ -18,12 +18,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
-	"bytes"
 	"crypto/tls"
 	"flag"
+	"io/ioutil"
 	"log"
 	"net"
-	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -77,27 +76,24 @@ func Run() {
 		if !path.IsAbs(*statedir) {
 			log.Fatalln("Need absolute path for statedir")
 		}
-		states, err := filepath.Glob(*statedir + "/#*")
+		states, err := filepath.Glob(path.Join(*statedir, "#*"))
 		if err != nil {
 			log.Fatalln("Can not read statedir", err)
 		}
 		for _, state := range states {
-			fd, err := os.Open(state)
+			buf, err := ioutil.ReadFile(state)
 			if err != nil {
-				log.Fatalln("Can not open state", state, err)
-			}
-			buf := make([]byte, 1024)
-			_, err = fd.Read(buf)
-			fd.Close()
-			if err != nil {
-				log.Fatalln("Can not read state", state, err)
+				log.Fatalf("Can not read state %s: %v", state, err)
 			}
 			room, _ := daemon.RoomRegister(path.Base(state))
-			buf = bytes.TrimRight(buf, "\x00")
 			contents := strings.Split(string(buf), "\n")
-			room.topic = contents[0]
-			room.key = contents[1]
-			log.Println("Loaded state for room", room.name)
+			if len(contents) < 2 {
+				log.Printf("State corrupted for %s: %q", room.name, contents)
+			} else {
+				room.topic = contents[0]
+				room.key = contents[1]
+				log.Println("Loaded state for room", room.name)
+			}
 		}
 		go StateKeeper(*statedir, state_sink)
 		log.Println(*statedir, "statekeeper initialized")
