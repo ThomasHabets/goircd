@@ -41,11 +41,11 @@ type Room struct {
 	key        string
 	members    map[*Client]bool
 	hostname   string
-	log_sink   chan LogEvent
-	state_sink chan StateEvent
+	log_sink   chan<- LogEvent
+	state_sink chan<- StateEvent
 }
 
-func NewRoom(hostname, name string, log_sink chan LogEvent, state_sink chan StateEvent) *Room {
+func NewRoom(hostname, name string, log_sink chan<- LogEvent, state_sink chan<- StateEvent) *Room {
 	room := Room{name: name}
 	room.members = make(map[*Client]bool)
 	room.topic = ""
@@ -78,7 +78,7 @@ func (room *Room) StateSave() {
 	room.state_sink <- StateEvent{room.name, room.topic, room.key}
 }
 
-func (room *Room) Processor(events chan ClientEvent) {
+func (room *Room) Processor(events <-chan ClientEvent) {
 	var client *Client
 	for event := range events {
 		client = event.client

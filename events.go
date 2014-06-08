@@ -60,7 +60,7 @@ type LogEvent struct {
 // Logging events logger itself
 // Each room's events are written to separate file in logdir
 // Events include messages, topic and keys changes, joining and leaving
-func Logger(logdir string, events chan LogEvent) {
+func Logger(logdir string, events <-chan LogEvent) {
 	mode := os.O_CREATE | os.O_WRONLY | os.O_APPEND
 	perm := os.FileMode(0660)
 	var format string
@@ -93,7 +93,7 @@ type StateEvent struct {
 // Room state events saver
 // Room states shows that either topic or key has been changed
 // Each room's state is written to separate file in statedir
-func StateKeeper(statedir string, events chan StateEvent) {
+func StateKeeper(statedir string, events <-chan StateEvent) {
 	mode := os.O_CREATE | os.O_TRUNC | os.O_WRONLY
 	perm := os.FileMode(0660)
 	for event := range events {

@@ -52,7 +52,7 @@ func NewClient(hostname string, conn net.Conn) *Client {
 // Client processor blockingly reads everything remote client sends,
 // splits messages by CRLF and send them to Daemon gorouting for processing
 // it futher. Also it can signalize that client is unavailable (disconnected).
-func (client *Client) Processor(sink chan ClientEvent) {
+func (client *Client) Processor(sink chan<- ClientEvent) {
 	var buf_net []byte
 	buf := make([]byte, 0)
 	log.Println("New client", client)

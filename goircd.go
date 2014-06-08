@@ -50,8 +50,7 @@ func Run() {
 	if *logdir == "" {
 		// Dummy logger
 		go func() {
-			for {
-				<-log_sink
+			for _ = range log_sink {
 			}
 		}()
 	} else {
@@ -68,8 +67,7 @@ func Run() {
 	if *statedir == "" {
 		// Dummy statekeeper
 		go func() {
-			for {
-				<-state_sink
+			for _ = range state_sink {
 			}
 		}()
 	} else {

@@ -46,11 +46,11 @@ type Daemon struct {
 	rooms                map[string]*Room
 	room_sinks           map[*Room]chan ClientEvent
 	last_aliveness_check time.Time
-	log_sink             chan LogEvent
-	state_sink           chan StateEvent
+	log_sink             chan<- LogEvent
+	state_sink           chan<- StateEvent
 }
 
-func NewDaemon(hostname, motd string, log_sink chan LogEvent, state_sink chan StateEvent) *Daemon {
+func NewDaemon(hostname, motd string, log_sink chan<- LogEvent, state_sink chan<- StateEvent) *Daemon {
 	daemon := Daemon{hostname: hostname, motd: motd}
 	daemon.clients = make(map[*Client]bool)
 	daemon.rooms = make(map[string]*Room)
@@ -195,7 +195,7 @@ func (daemon *Daemon) ClientRegister(client *Client, command string, cols []stri
 
 // Register new room in Daemon. Create an object, events sink, save pointers
 // to corresponding daemon's places and start room's processor goroutine.
-func (daemon *Daemon) RoomRegister(name string) (*Room, chan ClientEvent) {
+func (daemon *Daemon) RoomRegister(name string) (*Room, chan<- ClientEvent) {
 	room_new := NewRoom(daemon.hostname, name, daemon.log_sink, daemon.state_sink)
 	room_sink := make(chan ClientEvent)
 	daemon.rooms[name] = room_new
@@ -252,7 +252,7 @@ func (daemon *Daemon) HandlerJoin(client *Client, cmd string) {
 	}
 }
 
-func (daemon *Daemon) Processor(events chan ClientEvent) {
+func (daemon *Daemon) Processor(events <-chan ClientEvent) {
 	for event := range events {
 
 		// Check for clients aliveness
