@@ -101,7 +101,7 @@ func (daemon *Daemon) SendWhois(client *Client, nicknames []string) {
 		nickname = strings.ToLower(nickname)
 		found := false
 		for c := range daemon.clients {
-			if c.nickname != nickname {
+			if strings.ToLower(c.nickname) != nickname {
 				continue
 			}
 			found = true
