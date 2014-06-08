@@ -40,6 +40,7 @@ var (
 )
 
 type Daemon struct {
+	Verbose              bool
 	hostname             string
 	motd                 string
 	clients              map[*Client]bool
@@ -197,6 +198,7 @@ func (daemon *Daemon) ClientRegister(client *Client, command string, cols []stri
 // to corresponding daemon's places and start room's processor goroutine.
 func (daemon *Daemon) RoomRegister(name string) (*Room, chan<- ClientEvent) {
 	room_new := NewRoom(daemon.hostname, name, daemon.log_sink, daemon.state_sink)
+	room_new.Verbose = daemon.Verbose
 	room_sink := make(chan ClientEvent)
 	daemon.rooms[name] = room_new
 	daemon.room_sinks[room_new] = room_sink
@@ -289,7 +291,9 @@ func (daemon *Daemon) Processor(events <-chan ClientEvent) {
 		case EVENT_MSG:
 			cols := strings.SplitN(event.text, " ", 2)
 			command := strings.ToUpper(cols[0])
-			log.Println(client, "command", command)
+			if daemon.Verbose {
+				log.Println(client, "command", command)
+			}
 			if command == "QUIT" {
 				delete(daemon.clients, client)
 				client.conn.Close()

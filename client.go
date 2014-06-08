@@ -55,7 +55,7 @@ func NewClient(hostname string, conn net.Conn) *Client {
 func (client *Client) Processor(sink chan<- ClientEvent) {
 	var buf_net []byte
 	buf := make([]byte, 0)
-	log.Println("New client", client)
+	log.Println(client, "New client")
 	sink <- ClientEvent{client, EVENT_NEW, ""}
 	for {
 		buf_net = make([]byte, BUF_SIZE)

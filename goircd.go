@@ -39,6 +39,8 @@ var (
 	ssl     = flag.Bool("ssl", false, "Use SSL only.")
 	sslKey  = flag.String("ssl_key", "", "SSL keyfile.")
 	sslCert = flag.String("ssl_cert", "", "SSL certificate.")
+
+	verbose = flag.Bool("v", false, "Enable verbose logging.")
 )
 
 func Run() {
@@ -64,6 +66,7 @@ func Run() {
 
 	state_sink := make(chan StateEvent)
 	daemon := NewDaemon(*hostname, *motd, log_sink, state_sink)
+	daemon.Verbose = *verbose
 	if *statedir == "" {
 		// Dummy statekeeper
 		go func() {

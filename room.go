@@ -36,6 +36,7 @@ func RoomNameValid(name string) bool {
 }
 
 type Room struct {
+	Verbose    bool
 	name       string
 	topic      string
 	key        string
@@ -85,7 +86,9 @@ func (room *Room) Processor(events <-chan ClientEvent) {
 		switch event.event_type {
 		case EVENT_NEW:
 			room.members[client] = true
-			log.Println(client, "joined", room.name)
+			if room.Verbose {
+				log.Println(client, "joined", room.name)
+			}
 			room.SendTopic(client)
 			room.Broadcast(fmt.Sprintf(":%s JOIN %s", client, room.name))
 			room.log_sink <- LogEvent{room.name, client.nickname, "joined", true}
