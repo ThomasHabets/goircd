@@ -19,6 +19,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"flag"
 	"log"
 	"net"
@@ -34,6 +35,10 @@ var (
 	motd     = flag.String("motd", "", "Path to MOTD file")
 	logdir   = flag.String("logdir", "", "Absolute path to directory for logs")
 	statedir = flag.String("statedir", "", "Absolute path to directory for states")
+
+	ssl     = flag.Bool("ssl", false, "Use SSL only.")
+	sslKey  = flag.String("ssl_key", "", "SSL keyfile.")
+	sslCert = flag.String("ssl_cert", "", "SSL certificate.")
 )
 
 func Run() {
@@ -97,9 +102,23 @@ func Run() {
 		log.Println(*statedir, "statekeeper initialized")
 	}
 
-	listener, err := net.Listen("tcp", *bind)
-	if err != nil {
-		log.Fatalln("Can not listen on ", *bind)
+	var listener net.Listener
+	if *ssl {
+		cert, err := tls.LoadX509KeyPair(*sslCert, *sslKey)
+		if err != nil {
+			log.Fatalf("Could not load SSL keys from %s and %s: %s", *sslCert, *sslKey, err)
+		}
+		config := tls.Config{Certificates: []tls.Certificate{cert}}
+		listener, err = tls.Listen("tcp", *bind, &config)
+		if err != nil {
+			log.Fatalf("Can not listen on %s: %v", *bind, err)
+		}
+	} else {
+		var err error
+		listener, err = net.Listen("tcp", *bind)
+		if err != nil {
+			log.Fatalf("Can not listen on %s: %v", *bind, err)
+		}
 	}
 	log.Println("Listening on", *bind)
 
