@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"regexp"
 	"sort"
 	"strings"
@@ -98,7 +99,13 @@ func (daemon *Daemon) SendWhois(client *Client, nicknames []string) {
 				continue
 			}
 			found = true
-			client.ReplyNicknamed("311", c.nickname, c.username, c.conn.RemoteAddr().String(), "*", c.realname)
+			h := c.conn.RemoteAddr().String()
+			h, _, err := net.SplitHostPort(h)
+			if err != nil {
+				log.Printf("Can't parse RemoteAddr %q: %v", h, err)
+				h = "Unknown"
+			}
+			client.ReplyNicknamed("311", c.nickname, c.username, h, "*", c.realname)
 			client.ReplyNicknamed("312", c.nickname, daemon.hostname, daemon.hostname)
 			subscriptions := []string{}
 			for _, room := range daemon.rooms {
